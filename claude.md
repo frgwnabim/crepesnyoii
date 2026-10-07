@@ -1,7 +1,7 @@
 # Crepe Roll Nyoii: Web Pemesanan Booth
 
 ## Konteks
-Website pemesanan untuk booth "Crepe Roll Nyoii" di Binus Festival. Web ini OPSI SEKUNDER: antre langsung di booth tetap jalur utama. Web hanya untuk customer yang ingin pesan duluan dan ambil di jam tertentu.
+Website pemesanan untuk booth "CrepeNyoii" di Binus Festival. Web ini OPSI SEKUNDER: antre langsung di booth tetap jalur utama. Web hanya untuk customer yang ingin pesan duluan dan ambil di jam tertentu.
 
 ## Stack
 - Next.js (App Router) + TypeScript
