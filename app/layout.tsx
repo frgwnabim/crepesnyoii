@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { CartProvider } from "@/components/cart/CartProvider";
 import "./globals.css";
@@ -14,8 +14,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Crepe Roll Nyoii",
+  title: {
+    default: "Crepe Roll Nyoii",
+    template: "%s | Crepe Roll Nyoii",
+  },
   description: "Pesan crepe roll Nyoii duluan, ambil di booth sesuai jam pilihanmu.",
+  applicationName: "Crepe Roll Nyoii",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#FFF6EC",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

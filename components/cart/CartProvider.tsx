@@ -19,6 +19,9 @@ type CartContextValue = {
   getQuantity: (productId: string) => number;
   increment: (product: Product) => void;
   decrement: (productId: string) => void;
+  // Samakan data produk di keranjang dengan versi terbaru (nama/harga),
+  // dan buang kalau produk jadi habis.
+  syncProduct: (product: Product) => void;
   pickupSlot: PickupSlot | null;
   setPickupSlot: (slot: PickupSlot | null) => void;
   clear: () => void;
@@ -70,6 +73,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             )
             .filter((i) => i.quantity > 0),
         ),
+      syncProduct: (product) =>
+        setItems((prev) => {
+          if (!prev.some((i) => i.product.id === product.id)) return prev;
+          return product.is_available
+            ? prev.map((i) => (i.product.id === product.id ? { ...i, product } : i))
+            : prev.filter((i) => i.product.id !== product.id);
+        }),
       pickupSlot,
       setPickupSlot,
       clear: () => {

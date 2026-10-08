@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { LoginForm } from "@/components/admin/LoginForm";
 
 export const metadata: Metadata = {
-  title: "Login Admin | Crepe Roll Nyoii",
+  title: "Login Admin",
 };
 
 export default function AdminLoginPage() {
@@ -14,7 +14,7 @@ export default function AdminLoginPage() {
           <p className="text-2xl font-extrabold text-slate-900">Crepe Roll Nyoii</p>
           <p className="mt-1 text-sm text-slate-500">Panel admin booth</p>
         </div>
-        <Suspense>
+        <Suspense fallback={<div className="h-72 animate-pulse rounded-2xl bg-white ring-1 ring-slate-200" />}>
           <LoginForm />
         </Suspense>
         <p className="mt-4 text-center text-xs text-slate-400">

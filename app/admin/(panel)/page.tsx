@@ -1,7 +1,12 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { OrdersDashboard, type AdminOrderRow } from "@/components/admin/OrdersDashboard";
 import { getAdminUser } from "@/lib/admin/auth";
 import { createClient } from "@/lib/supabase/server";
+
+export const metadata: Metadata = {
+  title: "Pesanan hari ini",
+};
 
 const BOOTH_TZ = "Asia/Jakarta";
 
@@ -28,7 +33,7 @@ function todayLabel() {
 
 export default function AdminDashboardPage() {
   return (
-    <main className="px-8 py-8">
+    <main className="px-4 py-6 md:px-6 lg:px-8 lg:py-8">
       <Suspense fallback={<DashboardSkeleton />}>
         <TodayOrders />
       </Suspense>
@@ -70,7 +75,7 @@ function DashboardSkeleton() {
   return (
     <div aria-busy>
       <div className="mb-6 h-8 w-64 animate-pulse rounded bg-slate-200" />
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[0, 1, 2, 3].map((i) => (
           <div key={i} className="h-24 animate-pulse rounded-xl bg-white" />
         ))}

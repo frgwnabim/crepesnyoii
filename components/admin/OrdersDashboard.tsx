@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
+import { OrderActions } from "@/components/admin/OrderActions";
+import { slotTimeToMinutes, useWibMinutes } from "@/lib/admin/clock";
 import {
   ORDER_STATUSES,
   ORDER_STATUS_BADGE,
@@ -31,6 +33,9 @@ const timeFormatter = new Intl.DateTimeFormat("id-ID", {
   minute: "2-digit",
 });
 
+// Order dikonfirmasi tapi belum disiapkan saat jam ambil tinggal segini (atau sudah lewat).
+const REMINDER_MINUTES = 10;
+
 // Default: jam ambil terdekat dulu, lalu yang masuk lebih awal.
 function compareOrders(a: AdminOrderRow, b: AdminOrderRow) {
   const slotA = a.pickup_slot?.slot_time ?? "99:99";
@@ -45,6 +50,14 @@ export function OrdersDashboard({ orders }: { orders: AdminOrderRow[] }) {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "semua">("semua");
   const [slotFilter, setSlotFilter] = useState<string>("semua");
+  const nowMinutes = useWibMinutes();
+
+  // Sisa menit sebelum jam ambil kalau order perlu diingatkan, selain itu null.
+  function reminderMinutesLeft(o: AdminOrderRow) {
+    if (nowMinutes === null || o.status !== "dikonfirmasi" || !o.pickup_slot) return null;
+    const left = slotTimeToMinutes(o.pickup_slot.slot_time) - nowMinutes;
+    return left <= REMINDER_MINUTES ? left : null;
+  }
 
   const counts = useMemo(() => {
     const by = (s: OrderStatus) => orders.filter((o) => o.status === s).length;
@@ -83,7 +96,7 @@ export function OrdersDashboard({ orders }: { orders: AdminOrderRow[] }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="grid grid-cols-4 gap-4">
+      <section className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
         <SummaryCard
           label="Total order"
           value={counts.total}
@@ -116,7 +129,7 @@ export function OrdersDashboard({ orders }: { orders: AdminOrderRow[] }) {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Cari kode atau nama..."
             aria-label="Cari kode atau nama"
-            className="h-10 w-72 rounded-lg border border-slate-300 px-3 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
+            className="h-10 w-full rounded-lg sm:w-72 border border-slate-300 px-3 text-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-900/10"
           />
           <select
             value={statusFilter}
@@ -167,74 +180,109 @@ export function OrdersDashboard({ orders }: { orders: AdminOrderRow[] }) {
           </button>
         </div>
 
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-            <tr>
-              <th className="px-4 py-3 font-semibold">Kode & nama</th>
-              <th className="px-4 py-3 font-semibold">Item</th>
-              <th className="px-4 py-3 font-semibold">Jam ambil</th>
-              <th className="px-4 py-3 font-semibold">Status</th>
-              <th className="px-4 py-3 font-semibold">Bayar</th>
-              <th className="px-4 py-3 font-semibold">Masuk</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {visible.length === 0 ? (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
-                  {orders.length === 0
-                    ? "Belum ada pesanan hari ini."
-                    : "Tidak ada pesanan yang cocok dengan filter."}
-                </td>
+                <th className="px-4 py-3 font-semibold">Kode & nama</th>
+                <th className="px-4 py-3 font-semibold">Item</th>
+                <th className="px-4 py-3 font-semibold">Jam ambil</th>
+                <th className="px-4 py-3 font-semibold">Status</th>
+                <th className="hidden px-4 py-3 font-semibold xl:table-cell">Bayar</th>
+                <th className="hidden px-4 py-3 font-semibold xl:table-cell">Masuk</th>
+                <th className="px-4 py-3 font-semibold">Aksi</th>
               </tr>
-            ) : (
-              visible.map((o) => (
-                <tr
-                  key={o.id}
-                  onClick={() => router.push(`/admin/pesanan/${o.id}`)}
-                  className={`cursor-pointer transition-colors hover:bg-slate-50 ${
-                    o.status === "dibatalkan" ? "text-slate-400" : ""
-                  }`}
-                >
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/admin/pesanan/${o.id}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="font-mono font-bold text-slate-900 hover:underline"
-                    >
-                      {o.code}
-                    </Link>
-                    <p className="text-slate-500">{o.customer_name}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    {o.order_items.map((item, i) => (
-                      <p key={i}>
-                        {item.quantity}x {item.product?.name ?? "?"}
-                      </p>
-                    ))}
-                    <p className="text-xs text-slate-400">{formatRupiah(o.total_price)}</p>
-                  </td>
-                  <td className="px-4 py-3 font-semibold tabular-nums">
-                    {o.pickup_slot ? formatSlotTime(o.pickup_slot.slot_time) : "-"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge className={ORDER_STATUS_BADGE[o.status]}>
-                      {ORDER_STATUS_LABEL[o.status]}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge className={PAYMENT_STATUS_BADGE[o.payment_status]}>
-                      {PAYMENT_STATUS_LABEL[o.payment_status]}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 tabular-nums text-slate-500">
-                    {timeFormatter.format(new Date(o.created_at))}
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {visible.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
+                    {orders.length === 0
+                      ? "Belum ada pesanan hari ini."
+                      : "Tidak ada pesanan yang cocok dengan filter."}
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                visible.map((o) => {
+                  const minutesLeft = reminderMinutesLeft(o);
+                  const remind = minutesLeft !== null;
+                  return (
+                    <tr
+                      key={o.id}
+                      onClick={() => router.push(`/admin/pesanan/${o.id}`)}
+                      className={`cursor-pointer transition-colors ${
+                        remind
+                          ? "bg-orange-50 shadow-[inset_4px_0_0_0_#f97316] hover:bg-orange-100"
+                          : "hover:bg-slate-50"
+                      } ${o.status === "dibatalkan" ? "text-slate-400" : ""}`}
+                    >
+                      <td className="px-4 py-3">
+                        <Link
+                          href={`/admin/pesanan/${o.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="whitespace-nowrap font-mono font-bold text-slate-900 hover:underline"
+                        >
+                          {o.code}
+                        </Link>
+                        <p className="text-slate-500">{o.customer_name}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        {o.order_items.map((item, i) => (
+                          <p key={i} className="whitespace-nowrap">
+                            {item.quantity}x {item.product?.name ?? "?"}
+                          </p>
+                        ))}
+                        <p className="text-xs text-slate-400">{formatRupiah(o.total_price)}</p>
+                      </td>
+                      <td className="px-4 py-3 font-semibold tabular-nums">
+                        {o.pickup_slot ? formatSlotTime(o.pickup_slot.slot_time) : "-"}
+                        {remind && (
+                          <p className="mt-0.5 max-w-40 text-xs font-bold leading-snug text-orange-600">
+                            ⏰{" "}
+                            {minutesLeft > 0
+                              ? `${minutesLeft} menit lagi, belum disiapkan`
+                              : "Lewat jam ambil, belum disiapkan"}
+                          </p>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge className={ORDER_STATUS_BADGE[o.status]}>
+                          {ORDER_STATUS_LABEL[o.status]}
+                        </Badge>
+                        {/* Tablet (< xl): kolom Bayar & Masuk dilipat ke sini supaya tabel muat. */}
+                        <div className="mt-1.5 flex flex-wrap items-center gap-2 xl:hidden">
+                          <Badge className={PAYMENT_STATUS_BADGE[o.payment_status]}>
+                            {PAYMENT_STATUS_LABEL[o.payment_status]}
+                          </Badge>
+                          <span className="text-xs tabular-nums text-slate-400">
+                            masuk {timeFormatter.format(new Date(o.created_at))}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="hidden px-4 py-3 xl:table-cell">
+                        <Badge className={PAYMENT_STATUS_BADGE[o.payment_status]}>
+                          {PAYMENT_STATUS_LABEL[o.payment_status]}
+                        </Badge>
+                      </td>
+                      <td className="hidden px-4 py-3 tabular-nums text-slate-500 xl:table-cell">
+                        {timeFormatter.format(new Date(o.created_at))}
+                      </td>
+                      <td className="cursor-default px-4 py-3">
+                        <OrderActions
+                          orderId={o.id}
+                          orderCode={o.code}
+                          status={o.status}
+                          paymentStatus={o.payment_status}
+                          variant="compact"
+                        />
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </section>
     </div>
   );

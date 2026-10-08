@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useCart } from "@/components/cart/CartProvider";
 import { EmptyCartNotice } from "@/components/pesan/EmptyCartNotice";
+import { getDeviceId } from "@/lib/device-id";
 import { formatRupiah, formatSlotTime } from "@/lib/format";
 import { saveRecentOrder } from "@/lib/recent-orders";
 import { createClient } from "@/lib/supabase/client";
@@ -28,6 +29,13 @@ function toFriendlyError(error: RpcError): FriendlyError {
   if (!hint && error.message?.includes("Maksimal 2 crepe")) hint = "MAX_QTY";
 
   switch (hint) {
+    case "RATE_LIMITED":
+      return {
+        message:
+          "Kamu sudah bikin cukup banyak pesanan dalam sejam terakhir. Kalau mau pesan lagi, antre langsung di booth ya!",
+      };
+    case "INVALID_DEVICE":
+      return { message: "Ada yang aneh dengan browser-mu. Muat ulang halaman lalu coba lagi ya." };
     case "SLOT_FULL":
       return {
         message: "Yah, jam ambil ini keburu penuh. Pilih jam lain yuk!",
@@ -134,6 +142,7 @@ export function OrderForm() {
         pickup_slot_id: pickupSlot.id,
         items: items.map((i) => ({ product_id: i.product.id, quantity: i.quantity })),
         note: note.trim() || null,
+        device_id: getDeviceId(),
       });
 
       if (rpcError || !data?.code) {

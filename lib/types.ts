@@ -27,14 +27,14 @@ export type OrderStatus =
 
 export type PaymentStatus = "belum_bayar" | "lunas";
 
-// Hasil RPC get_order_by_code.
+// Hasil RPC get_order_by_code. customer_name sudah disamarkan ("An** Pr*****")
+// dan catatan tidak dikirim, karena siapa pun yang menebak kode bisa memanggilnya.
 export type OrderDetail = {
   code: string;
   customer_name: string;
   status: OrderStatus;
   payment_status: PaymentStatus;
   total_price: number;
-  note: string | null;
   created_at: string;
   updated_at: string;
   pickup_slot: { id: string; slot_time: string };
