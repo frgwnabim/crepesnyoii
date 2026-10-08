@@ -1,5 +1,10 @@
+import type { Metadata } from "next";
 import { StepHeader } from "@/components/StepHeader";
 import { OrderForm } from "@/components/pesan/OrderForm";
+
+export const metadata: Metadata = {
+  title: "Konfirmasi pesanan",
+};
 
 export default function KonfirmasiPage() {
   return (

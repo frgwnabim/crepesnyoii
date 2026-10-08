@@ -1,8 +1,13 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { StepHeader } from "@/components/StepHeader";
 import { ProductPicker } from "@/components/pesan/ProductPicker";
 import { createClient } from "@/lib/supabase/server";
 import type { Product } from "@/lib/types";
+
+export const metadata: Metadata = {
+  title: "Pilih crepe",
+};
 
 export default function PesanPage() {
   return (
@@ -22,7 +27,8 @@ async function ProductList() {
   const { data, error } = await supabase
     .from("products")
     .select("id, name, description, price, image_url, is_available")
-    .eq("is_available", true)
+    // Produk habis tetap diambil supaya tampil abu-abu dengan label "Habis".
+    .order("is_available", { ascending: false })
     .order("price", { ascending: true });
 
   if (error) {

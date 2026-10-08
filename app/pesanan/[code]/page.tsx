@@ -1,11 +1,17 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { CopyCodeButton } from "@/components/pesanan/CopyCodeButton";
+import { LiveOrderUpdates } from "@/components/pesanan/LiveOrderUpdates";
 import { OrderQrCode } from "@/components/pesanan/OrderQrCode";
 import { StatusTimeline } from "@/components/pesanan/StatusTimeline";
 import { formatRupiah, formatSlotTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import type { OrderDetail, OrderStatus } from "@/lib/types";
+
+export const metadata: Metadata = {
+  title: "Status pesanan",
+};
 
 const HEADLINE: Record<OrderStatus, { title: string; subtitle: string }> = {
   menunggu_konfirmasi: {
@@ -95,7 +101,7 @@ async function OrderView({ params }: { params: Promise<{ code: string }> }) {
         <p className="text-xs font-semibold uppercase tracking-widest text-cocoa/55">
           Kode pesanan
         </p>
-        <p className="mt-1 font-mono text-4xl font-extrabold tracking-[0.15em] text-cocoa">
+        <p className="mt-1 font-mono text-3xl font-extrabold tracking-[0.12em] text-cocoa min-[400px]:text-4xl min-[400px]:tracking-[0.15em]">
           {order.code}
         </p>
         <div className={`mt-4 ${cancelled ? "opacity-30 grayscale" : ""}`}>
@@ -109,6 +115,12 @@ async function OrderView({ params }: { params: Promise<{ code: string }> }) {
           📌 Simpan kode ini. Sebutkan kode, bukan nama, saat mengambil pesanan.
         </p>
       )}
+
+      <LiveOrderUpdates
+        code={order.code}
+        status={order.status}
+        paymentStatus={order.payment_status}
+      />
 
       {cancelled ? (
         <section
@@ -147,7 +159,6 @@ async function OrderView({ params }: { params: Promise<{ code: string }> }) {
               )}
             </dd>
           </div>
-          {order.note && <InfoRow label="Catatan" value={order.note} />}
         </dl>
 
         <ul className="mt-4 flex flex-col gap-2 border-t border-dashed border-cocoa/15 pt-4">

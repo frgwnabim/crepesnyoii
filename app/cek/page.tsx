@@ -1,5 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckOrderForm } from "@/components/pesanan/CheckOrderForm";
+
+export const metadata: Metadata = {
+  title: "Cek pesanan",
+};
 
 export default function CekPesananPage() {
   return (

@@ -1,15 +1,54 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { MAX_CREPES_PER_ORDER, useCart } from "@/components/cart/CartProvider";
+import { ToastStack, useToasts } from "@/components/ui/Toasts";
 import { formatRupiah } from "@/lib/format";
+import { createClient } from "@/lib/supabase/client";
 import type { Product } from "@/lib/types";
 
 export function ProductPicker({ products }: { products: Product[] }) {
-  const { totalQuantity, totalPrice, isFull } = useCart();
+  const router = useRouter();
+  const { items, totalQuantity, totalPrice, isFull, syncProduct } = useCart();
+  const { toasts, push, dismiss } = useToasts();
+
+  // Ref supaya handler realtime (subscribe sekali) selalu pakai keranjang terbaru.
+  const cartRef = useRef({ items, syncProduct });
+  useEffect(() => {
+    cartRef.current = { items, syncProduct };
+  }, [items, syncProduct]);
+
+  // Realtime: admin mengubah stok/harga/menu -> halaman ini ikut berubah.
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel("customer-products")
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, (payload) => {
+        if (payload.eventType === "UPDATE") {
+          const product = payload.new as Product;
+          const inCart = cartRef.current.items.some((i) => i.product.id === product.id);
+          if (inCart && !product.is_available) {
+            push({
+              title: `Yah, ${product.name} barusan habis`,
+              body: "Sudah kami keluarkan dari keranjangmu.",
+            });
+          }
+          cartRef.current.syncProduct(product);
+        }
+        router.refresh();
+      })
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [router, push]);
 
   return (
     <>
+      <ToastStack toasts={toasts} onDismiss={dismiss} theme="customer" />
+
       {products.length === 0 ? (
         <p className="rounded-2xl bg-white p-5 text-center text-sm text-cocoa/70 shadow-sm">
           Menu lagi kosong nih. Cek lagi sebentar ya, atau langsung mampir ke booth!
@@ -35,7 +74,7 @@ export function ProductPicker({ products }: { products: Product[] }) {
       )}
 
       <footer className="fixed inset-x-0 bottom-0 z-10 border-t border-cocoa/10 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-md items-center gap-4 px-5 py-4">
+        <div className="mx-auto flex w-full max-w-md items-center gap-3 px-4 py-4 min-[400px]:px-5">
           <div className="flex-1">
             <p className="text-xs text-cocoa/60">
               {totalQuantity} dari {MAX_CREPES_PER_ORDER} crepe
@@ -45,14 +84,14 @@ export function ProductPicker({ products }: { products: Product[] }) {
           {totalQuantity > 0 ? (
             <Link
               href="/pesan/jam"
-              className="flex h-12 items-center justify-center rounded-full bg-pink px-5 text-sm font-bold text-white shadow-md transition-colors hover:bg-pink-dark"
+              className="flex h-12 items-center justify-center whitespace-nowrap rounded-full bg-pink px-4 text-sm font-bold text-white shadow-md transition-colors hover:bg-pink-dark"
             >
               Lanjut pilih jam ambil
             </Link>
           ) : (
             <span
               aria-disabled
-              className="flex h-12 cursor-not-allowed items-center justify-center rounded-full bg-cocoa/15 px-5 text-sm font-bold text-cocoa/40"
+              className="flex h-12 cursor-not-allowed items-center justify-center whitespace-nowrap rounded-full bg-cocoa/15 px-4 text-sm font-bold text-cocoa/40"
             >
               Lanjut pilih jam ambil
             </span>
@@ -70,11 +109,11 @@ function ProductCard({ product }: { product: Product }) {
 
   return (
     <article
-      className={`flex gap-4 rounded-3xl bg-white p-3 shadow-sm ring-1 ring-cocoa/5 ${
+      className={`flex gap-3 rounded-3xl bg-white p-3 shadow-sm ring-1 ring-cocoa/5 ${
         soldOut ? "opacity-60 grayscale" : ""
       }`}
     >
-      <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-gradient-to-br from-pink/30 to-[#FFE3CC]">
+      <div className="relative h-20 w-20 shrink-0 min-[400px]:h-24 min-[400px]:w-24 overflow-hidden rounded-2xl bg-gradient-to-br from-pink/30 to-[#FFE3CC]">
         {product.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -164,3 +203,4 @@ function QtyButton({
     </button>
   );
 }
+

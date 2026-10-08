@@ -8,6 +8,6 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     // Lewati file statis dan gambar.
-    "/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp|js|wav|mp3)$).*)",
   ],
 };

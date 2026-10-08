@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCart } from "@/components/cart/CartProvider";
 import { EmptyCartNotice } from "@/components/pesan/EmptyCartNotice";
 import { formatSlotTime } from "@/lib/format";
+import { WEB_ORDERING_CLOSED_MESSAGE } from "@/lib/messages";
 import type { PickupSlot } from "@/lib/types";
 
 // Sisa kuota segini atau kurang dianggap "Hampir penuh".
@@ -51,7 +52,7 @@ export function SlotPicker({ slots }: { slots: PickupSlot[] }) {
     <>
       {slots.length === 0 ? (
         <p className="rounded-2xl bg-white p-5 text-center text-sm text-cocoa/70 shadow-sm">
-          Belum ada jadwal ambil yang dibuka. Langsung mampir ke booth aja ya!
+          {WEB_ORDERING_CLOSED_MESSAGE}
         </p>
       ) : (
         <ul className="grid grid-cols-2 gap-3">
@@ -93,7 +94,7 @@ export function SlotPicker({ slots }: { slots: PickupSlot[] }) {
       )}
 
       <footer className="fixed inset-x-0 bottom-0 z-10 border-t border-cocoa/10 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-md items-center gap-4 px-5 py-4">
+        <div className="mx-auto flex w-full max-w-md items-center gap-3 px-4 py-4 min-[400px]:px-5">
           <div className="flex-1" aria-live="polite">
             {selectedValid ? (
               <>
@@ -111,14 +112,14 @@ export function SlotPicker({ slots }: { slots: PickupSlot[] }) {
           {selectedValid ? (
             <Link
               href="/pesan/konfirmasi"
-              className="flex h-12 items-center justify-center rounded-full bg-pink px-5 text-sm font-bold text-white shadow-md transition-colors hover:bg-pink-dark"
+              className="flex h-12 items-center justify-center whitespace-nowrap rounded-full bg-pink px-4 text-sm font-bold text-white shadow-md transition-colors hover:bg-pink-dark"
             >
               Lanjut konfirmasi
             </Link>
           ) : (
             <span
               aria-disabled
-              className="flex h-12 cursor-not-allowed items-center justify-center rounded-full bg-cocoa/15 px-5 text-sm font-bold text-cocoa/40"
+              className="flex h-12 cursor-not-allowed items-center justify-center whitespace-nowrap rounded-full bg-cocoa/15 px-4 text-sm font-bold text-cocoa/40"
             >
               Lanjut konfirmasi
             </span>

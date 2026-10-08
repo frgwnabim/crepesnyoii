@@ -1,8 +1,13 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { StepHeader } from "@/components/StepHeader";
 import { SlotPicker } from "@/components/pesan/SlotPicker";
 import { createClient } from "@/lib/supabase/server";
 import type { PickupSlot } from "@/lib/types";
+
+export const metadata: Metadata = {
+  title: "Pilih jam ambil",
+};
 
 export default function PilihJamPage() {
   return (
