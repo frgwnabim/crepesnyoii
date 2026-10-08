@@ -30,7 +30,36 @@ export async function updateSession(request: NextRequest) {
   );
 
   // Jangan taruh kode apa pun di antara createServerClient dan getClaims().
-  await supabase.auth.getClaims();
+  const { data } = await supabase.auth.getClaims();
+  const isLoggedIn = !!data?.claims;
+
+  const { pathname, search } = request.nextUrl;
+  const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
+  const isLoginPage = pathname === "/admin/login";
+
+  // Belum login: semua /admin/* (kecuali halaman login) dilempar ke login.
+  if (isAdminRoute && !isLoginPage && !isLoggedIn) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/admin/login";
+    url.search = "";
+    url.searchParams.set("next", pathname + search);
+    return redirectWithCookies(url, response);
+  }
+
+  // Sudah login tapi buka halaman login: langsung ke dashboard.
+  if (isLoginPage && isLoggedIn) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/admin";
+    url.search = "";
+    return redirectWithCookies(url, response);
+  }
 
   return response;
+}
+
+// Redirect sambil membawa cookie sesi yang mungkin baru di-refresh.
+function redirectWithCookies(url: URL, from: NextResponse) {
+  const redirect = NextResponse.redirect(url);
+  from.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+  return redirect;
 }
