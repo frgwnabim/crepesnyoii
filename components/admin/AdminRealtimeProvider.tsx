@@ -23,6 +23,9 @@ import {
 import { createClient } from "@/lib/supabase/client";
 
 const POLL_INTERVAL_MS = 20_000;
+// Jaring pengaman: cek pesanan baru walau Realtime terlihat tersambung,
+// karena event postgres_changes bisa tidak sampai tanpa status error.
+const NEW_ORDER_CHECK_MS = 15_000;
 const soundPref = createBooleanPref("crepenyoii:admin-sound", true);
 
 export type ConnectionState = "connecting" | "live" | "reconnecting";
@@ -43,6 +46,7 @@ type OrderInsertRow = {
   code: string;
   customer_name: string;
   pickup_slot_id: string;
+  created_at: string;
 };
 
 export function AdminRealtimeProvider({ children }: { children: React.ReactNode }) {
@@ -83,6 +87,10 @@ export function AdminRealtimeProvider({ children }: { children: React.ReactNode 
     let pollTimer: ReturnType<typeof setInterval> | undefined;
     let wasDisconnected = false;
     let disposed = false;
+    // Pesanan yang sudah dinotifikasi, supaya Realtime dan pengecekan berkala
+    // tidak membunyikan pesanan yang sama dua kali.
+    const notifiedIds = new Set<string>();
+    let lastSeenCreatedAt: string | null = null;
 
     async function fetchPendingCount() {
       const { count, error } = await supabase
@@ -99,6 +107,8 @@ export function AdminRealtimeProvider({ children }: { children: React.ReactNode 
     }
 
     async function handleInsert(row: OrderInsertRow) {
+      if (notifiedIds.has(row.id)) return;
+      notifiedIds.add(row.id);
       const { data: slot } = await supabase
         .from("pickup_slots")
         .select("slot_time")
@@ -115,6 +125,36 @@ export function AdminRealtimeProvider({ children }: { children: React.ReactNode 
       }
     }
 
+    // lastSeenCreatedAt hanya diisi dari hasil query (bukan payload Realtime)
+    // supaya format timestamp-nya selalu sama saat dibandingkan.
+    async function checkNewOrders() {
+      if (lastSeenCreatedAt === null) {
+        // Titik awal: pesanan yang sudah ada saat panel dibuka tidak dinotifikasi.
+        const { data, error } = await supabase
+          .from("orders")
+          .select("created_at")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (disposed || error) return;
+        lastSeenCreatedAt = data?.created_at ?? new Date(0).toISOString();
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id, code, customer_name, pickup_slot_id, created_at")
+        .gt("created_at", lastSeenCreatedAt)
+        .order("created_at");
+      if (disposed || error || !data?.length) return;
+      lastSeenCreatedAt = data[data.length - 1].created_at;
+      const fresh = (data as OrderInsertRow[]).filter((row) => !notifiedIds.has(row.id));
+      if (fresh.length === 0) return;
+      for (const row of fresh) void handleInsert(row);
+      scheduleRefresh();
+      void fetchPendingCount();
+    }
+
     function startPolling() {
       if (pollTimer) return;
       pollTimer = setInterval(() => {
@@ -129,6 +169,8 @@ export function AdminRealtimeProvider({ children }: { children: React.ReactNode 
     }
 
     void fetchPendingCount();
+    void checkNewOrders();
+    const checkTimer = setInterval(() => void checkNewOrders(), NEW_ORDER_CHECK_MS);
 
     const channel = supabase
       .channel("admin-orders")
@@ -170,6 +212,7 @@ export function AdminRealtimeProvider({ children }: { children: React.ReactNode 
     return () => {
       disposed = true;
       clearTimeout(refreshTimer);
+      clearInterval(checkTimer);
       stopPolling();
       void supabase.removeChannel(channel);
     };
